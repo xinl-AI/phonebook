@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "手机通讯录",
+    "slug": "phonebook",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F5F6FA"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.phonebook.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#07C160"
+      },
+      "package": "com.phonebook.app"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+# ============================================
+# IDE
+# ============================================
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# ============================================
+# Java / Maven
+# ============================================
+target/
+*.class
+*.jar
+*.war
+!src/main/**/*.java
+
+# ============================================
+# Node / React Native / Expo
+# ============================================
+node_modules/
+.expo/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.metro-health-check*
+
+# Expo
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# ============================================
+# OS
+# ============================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ============================================
+# Obsidian
+# ============================================
+docs/.obsidian/
+
+# ============================================
+# Claude Code (contains command history with credentials)
+# ============================================
+.claude/settings.local.json
+
+# ============================================
+# Environment
+# ============================================
+.env
+.env.local
+.env.production

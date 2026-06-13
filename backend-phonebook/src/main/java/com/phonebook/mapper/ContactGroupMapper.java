@@ -28,8 +28,19 @@ public interface ContactGroupMapper extends BaseMapper<ContactGroup> {
     int deleteByContactId(@Param("contactId") Long contactId);
 
     /**
-     * 查询某分组下的所有联系人ID
+     * 查询某分组下的所有联系人ID（排除已删除的联系人）
      */
-    @Select("SELECT contact_id FROM contact_group WHERE group_id = #{groupId}")
+    @Select("SELECT cg.contact_id FROM contact_group cg " +
+            "INNER JOIN contact c ON cg.contact_id = c.id " +
+            "WHERE cg.group_id = #{groupId} AND c.is_deleted = 0")
     List<Long> selectContactIdsByGroupId(@Param("groupId") Long groupId);
+
+    /**
+     * 批量查询多个联系人的分组关联（避免N+1）
+     */
+    @Select("<script>" +
+            "SELECT contact_id, group_id FROM contact_group WHERE contact_id IN " +
+            "<foreach item='id' collection='contactIds' open='(' separator=',' close=')'>#{id}</foreach>" +
+            "</script>")
+    List<ContactGroup> selectByContactIds(@Param("contactIds") List<Long> contactIds);
 }

@@ -3,35 +3,33 @@ import { Animated, Text, StyleSheet } from 'react-native';
 import colors from '../styles/colors';
 
 /**
- * 轻提示组件
- * 显示后自动消失的提示信息
- * @param {boolean} visible - 是否显示
- * @param {string} message - 提示文字
- * @param {string} type - 类型：success/error/info
- * @param {number} duration - 显示时长（毫秒）
- * @param {function} onHide - 隐藏回调
+ * 轻提示组件（修复内存泄漏：组件卸载时停止动画）
  */
 const CustomToast = ({ visible, message, type = 'success', duration = 2000, onHide }) => {
   const opacity = useRef(new Animated.Value(0)).current;
+  const animationRef = useRef(null);
 
   useEffect(() => {
     if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+      // 停止之前的动画
+      if (animationRef.current) animationRef.current.stop();
+
+      const animation = Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
         Animated.delay(duration),
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
+        Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]);
+      animationRef.current = animation;
+
+      animation.start(() => {
+        animationRef.current = null;
         if (onHide) onHide();
       });
     }
+
+    return () => {
+      if (animationRef.current) animationRef.current.stop();
+    };
   }, [visible]);
 
   if (!visible) return null;

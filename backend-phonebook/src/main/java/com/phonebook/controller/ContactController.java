@@ -99,6 +99,30 @@ public class ContactController {
         return Result.ok();
     }
 
+    /** 获取回收站列表 */
+    @GetMapping("/recycle")
+    public Result<?> recycleList(@RequestParam(defaultValue = "1") Integer page,
+                                  @RequestParam(defaultValue = "20") Integer size) {
+        Long userId = getCurrentUserId();
+        return Result.ok(contactService.getDeletedContacts(userId, page, size));
+    }
+
+    /** 恢复已删除的联系人 */
+    @PutMapping("/{id}/restore")
+    public Result<?> restore(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        contactService.restoreContact(userId, id);
+        return Result.ok("恢复成功");
+    }
+
+    /** 永久删除联系人（物理删除） */
+    @DeleteMapping("/{id}/permanent")
+    public Result<?> permanentDelete(@PathVariable Long id) {
+        Long userId = getCurrentUserId();
+        contactService.permanentDelete(userId, id);
+        return Result.ok("已永久删除");
+    }
+
     private Long getCurrentUserId() {
         return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }

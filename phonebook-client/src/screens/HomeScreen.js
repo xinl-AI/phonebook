@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import useContactStore from '../stores/useContactStore';
 import useGroupStore from '../stores/useGroupStore';
 import useAuthStore from '../stores/useAuthStore';
@@ -23,21 +24,23 @@ import useDebounce from '../hooks/useDebounce';
 
 /**
  * 主页（联系人列表）
- * 核心功能：分组筛选、搜索、联系人列表展示、添加/删除联系人
+ * - 搜索栏和分组标签在 FlatList 外部，避免切换分组时列表跳动
+ * - 删除/恢复后自动同步分组人数
  */
 const HomeScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
   const [deleteModal, setDeleteModal] = useState({ visible: false, contact: null });
   const debouncedSearch = useDebounce(searchText, 300);
+  const listRef = useRef(null);
 
   const {
-    contacts, isLoading, isRefreshing, selectedGroupId, favorites,
+    contacts, isLoading, isRefreshing, selectedGroupId,
     loadContacts, refresh, loadMore, setGroupFilter, setKeyword,
-    removeContact, loadFavorites,
+    removeContact,
   } = useContactStore();
 
   const { groups, loadGroups } = useGroupStore();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   // 初始加载
   useEffect(() => {
@@ -45,55 +48,37 @@ const HomeScreen = ({ navigation }) => {
     loadGroups();
   }, []);
 
+  // 页面聚焦时刷新分组计数
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadGroups();
+    });
+    return unsubscribe;
+  }, [navigation, loadGroups]);
+
   // 搜索防抖
   useEffect(() => {
     setKeyword(debouncedSearch);
   }, [debouncedSearch]);
 
-  // 导航到添加联系人页
-  const handleAddContact = useCallback(() => {
-    navigation.navigate('ContactEdit', { mode: 'add' });
-  }, [navigation]);
+  // 切换分组——手动启动刷新但不丢数据
+  const handleGroupSelect = useCallback((groupId) => {
+    setGroupFilter(groupId);
+  }, [setGroupFilter]);
 
-  // 点击联系人 → 详情页
-  const handleContactPress = useCallback((contact) => {
-    navigation.navigate('ContactDetail', { contactId: contact.id });
-  }, [navigation]);
-
-  // 长按联系人 → 删除确认
-  const handleContactLongPress = useCallback((contact) => {
-    setDeleteModal({ visible: true, contact });
-  }, []);
-
-  // 确认删除
+  // 确认删除——同时刷新分组计数
   const handleDeleteConfirm = async () => {
     const contact = deleteModal.contact;
     if (contact) {
       const success = await removeContact(contact.id);
       if (success) {
-        Alert.alert('提示', '删除成功');
+        loadGroups(); // 同步分组人数
       }
     }
     setDeleteModal({ visible: false, contact: null });
   };
 
-  // 导航到分组管理
-  const handleManageGroups = useCallback(() => {
-    navigation.navigate('GroupManage');
-  }, [navigation]);
-
-  // 退出登录
-  const handleLogout = () => {
-    Alert.alert('确认退出', '确定要退出登录吗？', [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '确定',
-        onPress: () => logout(),
-      },
-    ]);
-  };
-
-  // 渲染头部（用户信息栏）
+  // 头部用户栏
   const renderHeader = () => (
     <View style={styles.headerBar}>
       <TouchableOpacity
@@ -115,31 +100,25 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.headerActions}>
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => navigation.navigate('Settings')}>
-          <Text style={styles.headerBtnText}>⚙️</Text>
+          onPress={() => navigation.navigate('RecycleBin')}
+          accessible accessibilityLabel="回收站">
+          <Ionicons name="trash-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerBtn} onPress={handleLogout}>
-          <Text style={styles.logoutText}>退出</Text>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => navigation.navigate('Settings')}
+          accessible accessibilityLabel="设置">
+          <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  // 渲染列表项
-  const renderItem = ({ item }) => (
-    <ContactItem
-      contact={item}
-      onPress={() => handleContactPress(item)}
-      onLongPress={() => handleContactLongPress(item)}
-    />
-  );
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {renderHeader()}
 
-  // 渲染列表分隔线
-  const renderSeparator = () => <View style={styles.separator} />;
-
-  // 列表头部（搜索栏 + 分组筛选）
-  const ListHeader = (
-    <View>
+      {/* 搜索栏和分组标签在 FlatList 外部 → 切换分组不跳动 */}
       <SearchBar
         value={searchText}
         onChangeText={setSearchText}
@@ -148,27 +127,27 @@ const HomeScreen = ({ navigation }) => {
       <GroupHeader
         groups={groups}
         selectedId={selectedGroupId}
-        onSelect={setGroupFilter}
-        onManage={handleManageGroups}
+        onSelect={handleGroupSelect}
+        onManage={() => navigation.navigate('GroupManage')}
       />
-    </View>
-  );
-
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {renderHeader()}
 
       <FlatList
+        ref={listRef}
         data={contacts}
         keyExtractor={(item) => String(item.id)}
-        renderItem={renderItem}
-        ItemSeparatorComponent={renderSeparator}
-        ListHeaderComponent={ListHeader}
+        renderItem={({ item }) => (
+          <ContactItem
+            contact={item}
+            onPress={() => navigation.navigate('ContactDetail', { contactId: item.id })}
+            onLongPress={() => setDeleteModal({ visible: true, contact: item })}
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           isLoading ? null : (
             <EmptyView
-              message={searchText ? '没有找到匹配的联系人' : '还没有联系人，点击下方+号添加'}
-              icon={searchText ? '🔍' : '📇'}
+              iconName={searchText ? 'search-outline' : 'people-outline'}
+              message={searchText ? '没有找到匹配的联系人' : '还没有联系人，点击 + 添加'}
             />
           )
         }
@@ -176,13 +155,13 @@ const HomeScreen = ({ navigation }) => {
         onRefresh={refresh}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        stickyHeaderIndices={[0]} // 搜索栏吸顶
         contentContainerStyle={styles.listContent}
+        removeClippedSubviews={false}
+        showsVerticalScrollIndicator={false}
       />
 
-      <FloatingButton onPress={handleAddContact} />
+      <FloatingButton onPress={() => navigation.navigate('ContactEdit', { mode: 'add' })} />
 
-      {/* 删除确认弹窗 */}
       <CustomModal
         visible={deleteModal.visible}
         title="删除联系人"
@@ -207,7 +186,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm + 4,
     backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
@@ -226,7 +205,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: colors.surface,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -247,16 +226,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerBtn: {
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs,
-  },
-  headerBtnText: {
-    fontSize: 20,
-  },
-  logoutText: {
-    fontSize: 13,
-    color: colors.error,
-    fontWeight: '500',
   },
   separator: {
     height: StyleSheet.hairlineWidth,
@@ -265,6 +236,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 80,
+    flexGrow: 1,
   },
 });
 

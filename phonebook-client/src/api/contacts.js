@@ -33,4 +33,13 @@ export const contactAPI = {
     client.put(`/api/contacts/${id}/favorite`, isFavorite, {
       headers: { 'Content-Type': 'application/json' },
     }),
+
+  /** 获取回收站列表 */
+  getRecycleList: (params) => client.get('/api/contacts/recycle', { params }),
+
+  /** 恢复已删除的联系人 */
+  restore: (id) => client.put(`/api/contacts/${id}/restore`),
+
+  /** 永久删除 */
+  permanentDelete: (id) => client.delete(`/api/contacts/${id}/permanent`),
 };

@@ -1,19 +1,21 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import colors from '../styles/colors';
 
 /**
  * 浮动操作按钮（FAB）
- * 通常在联系人列表右下角，点击跳转添加联系人页
- * @param {function} onPress - 点击回调
  */
 const FloatingButton = ({ onPress }) => {
   return (
     <TouchableOpacity
       style={styles.fab}
       onPress={onPress}
-      activeOpacity={0.8}>
-      <Text style={styles.icon}>+</Text>
+      activeOpacity={0.8}
+      accessible
+      accessibilityLabel="添加联系人"
+      accessibilityRole="button">
+      <Ionicons name="add" size={30} color="#FFFFFF" />
     </TouchableOpacity>
   );
 };
@@ -34,12 +36,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6,
-  },
-  icon: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: '300',
-    marginTop: -2,
   },
 });
 

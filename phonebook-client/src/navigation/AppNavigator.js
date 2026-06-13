@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import useAuthStore from '../stores/useAuthStore';
-import { removeToken } from '../utils/storage';
 import SplashScreen from '../screens/SplashScreen';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';

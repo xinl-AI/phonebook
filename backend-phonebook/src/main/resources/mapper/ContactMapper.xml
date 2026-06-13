@@ -53,4 +53,27 @@
         ORDER BY update_time DESC
     </select>
 
+    <!-- 查询回收站中的联系人（is_deleted=1，绕过 MyBatis-Plus 逻辑删除自动过滤） -->
+    <select id="selectDeletedContacts" resultMap="BaseResultMap">
+        SELECT * FROM contact
+        WHERE user_id = #{userId}
+        AND is_deleted = 1
+        ORDER BY update_time DESC
+    </select>
+
+    <!-- 根据 ID 查询联系人（不区分 is_deleted，用于恢复） -->
+    <select id="selectByIdIgnoreDeleted" resultMap="BaseResultMap">
+        SELECT * FROM contact WHERE id = #{id}
+    </select>
+
+    <!-- 恢复联系人（绕过 @TableLogic 的 WHERE is_deleted=0 过滤） -->
+    <update id="restoreById">
+        UPDATE contact SET is_deleted = 0 WHERE id = #{id}
+    </update>
+
+    <!-- 物理删除（绕过 @TableLogic 过滤，直接 DELETE FROM） -->
+    <delete id="physicalDeleteById">
+        DELETE FROM contact WHERE id = #{id}
+    </delete>
+
 </mapper>

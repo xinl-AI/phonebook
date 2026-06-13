@@ -35,4 +35,13 @@ public interface ContactService {
 
     /** 切换收藏状态 */
     void toggleFavorite(Long userId, Long contactId, Boolean isFavorite);
+
+    /** 获取回收站中的联系人列表 */
+    IPage<ContactResponse> getDeletedContacts(Long userId, Integer page, Integer size);
+
+    /** 从回收站恢复联系人 */
+    void restoreContact(Long userId, Long contactId);
+
+    /** 永久删除联系人（物理删除） */
+    void permanentDelete(Long userId, Long contactId);
 }

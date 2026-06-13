@@ -216,13 +216,13 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
+    @Transactional
     public void sortGroups(Long userId, List<Long> groupIds) {
         for (int i = 0; i < groupIds.size(); i++) {
-            Group group = groupMapper.selectById(groupIds.get(i));
-            if (group != null && group.getUserId().equals(userId)) {
-                group.setSortOrder(i);
-                groupMapper.updateById(group);
-            }
+            Group group = new Group();
+            group.setId(groupIds.get(i));
+            group.setSortOrder(i);
+            groupMapper.updateById(group); // MyBatis-Plus updates only non-null fields
         }
     }
 

@@ -21,9 +21,13 @@ public class UserController {
         this.userService = userService;
     }
 
-    /** 获取用户信息 */
+    /** 获取用户信息（仅允许查看自己的信息） */
     @GetMapping("/{id}")
     public Result<?> getUser(@PathVariable Long id) {
+        Long currentUserId = getCurrentUserId();
+        if (!currentUserId.equals(id)) {
+            return Result.error(403, "无权查看其他用户信息");
+        }
         return Result.ok(userService.getUserById(id));
     }
 

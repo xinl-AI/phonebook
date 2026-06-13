@@ -57,8 +57,17 @@ docs/.obsidian/
 .claude/settings.local.json
 
 # ============================================
+# Sensitive config (template is application-template.yml)
+# ============================================
+application.yml
+
+# ============================================
 # Environment
 # ============================================
 .env
 .env.local
 .env.production
+.obsidian/core-plugins.json
+.obsidian/app.json
+.obsidian/appearance.json
+.obsidian/workspace.json

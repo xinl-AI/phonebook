@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import colors from '../styles/colors';
 
 /**
  * 启动页
- * 应用启动时显示，检查登录状态
  */
 const SplashScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.appName}>📇 手机通讯录</Text>
+      <Ionicons name="person-circle-outline" size={64} color={colors.primary} />
+      <Text style={styles.appName}>手机通讯录</Text>
       <Text style={styles.subtitle}>您的私人通讯管家</Text>
       <ActivityIndicator
         size="small"
@@ -28,17 +29,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.textPrimary,
+    marginTop: 12,
   },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 8,
+    marginTop: 6,
   },
   spinner: {
-    marginTop: 40,
+    marginTop: 32,
   },
 });
 

@@ -19,8 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -47,17 +46,34 @@ public class ContactServiceImpl implements ContactService {
         Page<Contact> pageParam = new Page<>(page, size);
         IPage<Contact> contactPage = contactMapper.selectContactPage(pageParam, userId, groupId, keyword);
 
-        // 转换为响应DTO，并填充分组信息
-        return contactPage.convert(contact -> convertToResponse(contact));
+        // 批量加载分组信息（消灭N+1）：2次查询搞定整页数据
+        Map<Long, List<ContactResponse.GroupSimple>> groupMap = batchLoadGroups(
+                contactPage.getRecords().stream().map(Contact::getId).collect(Collectors.toList()));
+
+        return contactPage.convert(contact -> {
+            ContactResponse resp = new ContactResponse();
+            BeanUtils.copyProperties(contact, resp);
+            resp.setGroups(groupMap.getOrDefault(contact.getId(), Collections.emptyList()));
+            return resp;
+        });
     }
 
     @Override
     public List<ContactResponse> getFavorites(Long userId) {
         Page<Contact> page = new Page<>(1, 100);
         IPage<Contact> contactPage = contactMapper.selectFavorites(page, userId);
-        return contactPage.getRecords().stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
+        List<Contact> records = contactPage.getRecords();
+
+        // 批量加载分组
+        Map<Long, List<ContactResponse.GroupSimple>> groupMap = batchLoadGroups(
+                records.stream().map(Contact::getId).collect(Collectors.toList()));
+
+        return records.stream().map(contact -> {
+            ContactResponse resp = new ContactResponse();
+            BeanUtils.copyProperties(contact, resp);
+            resp.setGroups(groupMap.getOrDefault(contact.getId(), Collections.emptyList()));
+            return resp;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -191,8 +207,109 @@ public class ContactServiceImpl implements ContactService {
         contactMapper.updateById(contact);
     }
 
+    @Override
+    public IPage<ContactResponse> getDeletedContacts(Long userId, Integer page, Integer size) {
+        Page<Contact> pageParam = new Page<>(page, size);
+        IPage<Contact> contactPage = contactMapper.selectDeletedContacts(pageParam, userId);
+
+        // 批量加载分组
+        Map<Long, List<ContactResponse.GroupSimple>> groupMap = batchLoadGroups(
+                contactPage.getRecords().stream().map(Contact::getId).collect(Collectors.toList()));
+
+        return contactPage.convert(contact -> {
+            ContactResponse response = new ContactResponse();
+            BeanUtils.copyProperties(contact, response);
+            response.setGroups(groupMap.getOrDefault(contact.getId(), Collections.emptyList()));
+            return response;
+        });
+    }
+
+    @Override
+    @Transactional
+    public void restoreContact(Long userId, Long contactId) {
+        // 使用自定义 SQL 绕过 MyBatis-Plus 逻辑删除过滤
+        Contact contact = contactMapper.selectByIdIgnoreDeleted(contactId);
+        if (contact == null || !contact.getUserId().equals(userId)) {
+            throw new BusinessException("联系人不存在");
+        }
+        if (contact.getIsDeleted() == 0) {
+            throw new BusinessException("联系人未被删除");
+        }
+
+        // 恢复：使用自定义 SQL 绕过 @TableLogic 的 WHERE 过滤
+        contactMapper.restoreById(contactId);
+
+        // 更新分组计数
+        List<Long> groupIds = contactGroupMapper.selectGroupIdsByContactId(contactId);
+        updateGroupContactCount(groupIds);
+    }
+
+    @Override
+    @Transactional
+    public void permanentDelete(Long userId, Long contactId) {
+        Contact contact = contactMapper.selectByIdIgnoreDeleted(contactId);
+        if (contact == null || !contact.getUserId().equals(userId)) {
+            throw new BusinessException("联系人不存在");
+        }
+
+        // 清除分组关联
+        List<Long> groupIds = contactGroupMapper.selectGroupIdsByContactId(contactId);
+        contactGroupMapper.deleteByContactId(contactId);
+
+        // 物理删除：使用自定义 SQL 绕过 @TableLogic 的 is_deleted=0 过滤
+        contactMapper.physicalDeleteById(contactId);
+
+        // 更新分组计数（已清除关联）
+        updateGroupContactCount(groupIds);
+    }
+
     /**
-     * 将Contact实体转换为响应DTO，包含分组信息
+     * 批量加载联系人分组信息（消灭 N+1 查询）
+     * 2 次查询：一次查所有 contact_group 关联，一次查所有 group 详情
+     */
+    private Map<Long, List<ContactResponse.GroupSimple>> batchLoadGroups(List<Long> contactIds) {
+        if (contactIds.isEmpty()) return Collections.emptyMap();
+
+        // 一次查询获取所有关联
+        List<ContactGroup> allRelations = contactGroupMapper.selectByContactIds(contactIds);
+
+        // 收集所有 groupId
+        Set<Long> groupIdSet = new HashSet<>();
+        Map<Long, List<Long>> contactToGroups = new HashMap<>();
+        for (ContactGroup cg : allRelations) {
+            groupIdSet.add(cg.getGroupId());
+            contactToGroups.computeIfAbsent(cg.getContactId(), k -> new ArrayList<>()).add(cg.getGroupId());
+        }
+
+        // 一次查询获取所有分组详情
+        Map<Long, Group> groupMap = new HashMap<>();
+        if (!groupIdSet.isEmpty()) {
+            List<Group> groups = groupMapper.selectBatchIds(new ArrayList<>(groupIdSet));
+            for (Group g : groups) groupMap.put(g.getId(), g);
+        }
+
+        // 组装结果
+        Map<Long, List<ContactResponse.GroupSimple>> result = new HashMap<>();
+        for (Long contactId : contactIds) {
+            List<Long> gIds = contactToGroups.getOrDefault(contactId, Collections.emptyList());
+            List<ContactResponse.GroupSimple> simples = new ArrayList<>();
+            for (Long gId : gIds) {
+                Group g = groupMap.get(gId);
+                if (g != null) {
+                    ContactResponse.GroupSimple gs = new ContactResponse.GroupSimple();
+                    gs.setId(g.getId());
+                    gs.setName(g.getName());
+                    gs.setColor(g.getColor());
+                    simples.add(gs);
+                }
+            }
+            result.put(contactId, simples);
+        }
+        return result;
+    }
+
+    /**
+     * 将Contact实体转换为响应DTO，包含分组信息（单个联系人使用）
      */
     private ContactResponse convertToResponse(Contact contact) {
         ContactResponse response = new ContactResponse();

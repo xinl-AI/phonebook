@@ -6,6 +6,8 @@ import ContactEditScreen from '../screens/ContactEditScreen';
 import GroupManageScreen from '../screens/GroupManageScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import RecycleBinScreen from '../screens/RecycleBinScreen';
+import colors from '../styles/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,8 +18,8 @@ const MainNavigator = () => {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#FFFFFF' },
-        headerTintColor: '#1A1A2E',
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.textPrimary,
         headerTitleStyle: { fontWeight: '600' },
         headerShadowVisible: false,
         headerBackTitle: '返回',
@@ -51,6 +53,11 @@ const MainNavigator = () => {
         name="Settings"
         component={SettingsScreen}
         options={{ title: '设置' }}
+      />
+      <Stack.Screen
+        name="RecycleBin"
+        component={RecycleBinScreen}
+        options={{ title: '回收站' }}
       />
     </Stack.Navigator>
   );

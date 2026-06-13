@@ -1,15 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import colors from '../styles/colors';
 import spacing from '../styles/spacing';
 
 /**
  * 分组筛选头部组件
- * 横向滚动的分组标签，点击切换筛选
- * @param {Array} groups - 分组列表
- * @param {number|null} selectedId - 当前选中的分组ID（null=全部）
- * @param {function} onSelect - 选择回调
- * @param {function} onManage - 管理分组回调
+ * 横向滚动的分组标签 + 管理按钮
  */
 const GroupHeader = ({ groups = [], selectedId, onSelect, onManage }) => {
   return (
@@ -23,11 +20,7 @@ const GroupHeader = ({ groups = [], selectedId, onSelect, onManage }) => {
           style={[styles.tag, selectedId === null && styles.tagActive]}
           onPress={() => onSelect(null)}
           activeOpacity={0.7}>
-          <Text
-            style={[
-              styles.tagText,
-              selectedId === null && styles.tagTextActive,
-            ]}>
+          <Text style={[styles.tagText, selectedId === null && styles.tagTextActive]}>
             全部
           </Text>
         </TouchableOpacity>
@@ -38,22 +31,17 @@ const GroupHeader = ({ groups = [], selectedId, onSelect, onManage }) => {
             key={group.id}
             style={[
               styles.tag,
-              selectedId === group.id && styles.tagActive,
-              { borderColor: group.color || colors.primary },
-              selectedId === group.id && {
-                backgroundColor: group.color || colors.primary,
-              },
+              selectedId === group.id && { backgroundColor: group.color || colors.primary, borderColor: group.color || colors.primary },
             ]}
             onPress={() => onSelect(group.id)}
             activeOpacity={0.7}>
             <Text
               style={[
                 styles.tagText,
-                { color: group.color || colors.textSecondary },
-                selectedId === group.id && styles.tagTextActive,
+                { color: selectedId === group.id ? '#FFFFFF' : (group.color || colors.textSecondary) },
               ]}>
               {group.name}
-              <Text style={[styles.count, selectedId === group.id && { color: '#FFFFFF' }]}>
+              <Text style={{ color: selectedId === group.id ? 'rgba(255,255,255,0.7)' : colors.textHint, fontSize: 11 }}>
                 {' '}{group.contactCount || 0}
               </Text>
             </Text>
@@ -65,7 +53,7 @@ const GroupHeader = ({ groups = [], selectedId, onSelect, onManage }) => {
           style={styles.manageBtn}
           onPress={onManage}
           activeOpacity={0.7}>
-          <Text style={styles.manageText}>+ 管理</Text>
+          <Ionicons name="options-outline" size={18} color={colors.primary} />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -104,18 +92,9 @@ const styles = StyleSheet.create({
   tagTextActive: {
     color: '#FFFFFF',
   },
-  count: {
-    fontSize: 11,
-    color: colors.textHint,
-  },
   manageBtn: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  manageText: {
-    fontSize: 13,
-    color: colors.primary,
-    fontWeight: '500',
+    paddingLeft: spacing.sm,
+    paddingVertical: spacing.xs,
   },
 });
 
